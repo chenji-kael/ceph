@@ -1117,14 +1117,15 @@ bool PGMonitor::map_pg_creates()
 	   << dendl;
 
   unsigned changed = 0;
-  for (set<pg_t>::iterator p = pg_map.creating_pgs.begin();
+  for (set<pg_t>::const_iterator p = pg_map.creating_pgs.begin();
        p != pg_map.creating_pgs.end();
        ++p) {
     pg_t pgid = *p;
     pg_t on = pgid;
-    ceph::unordered_map<pg_t,pg_stat_t>::iterator q = pg_map.pg_stat.find(pgid);
+    ceph::unordered_map<pg_t,pg_stat_t>::const_iterator q =
+      pg_map.pg_stat.find(pgid);
     assert(q != pg_map.pg_stat.end());
-    pg_stat_t *s = &q->second;
+    const pg_stat_t *s = &q->second;
 
     if (s->parent_split_bits)
       on = s->parent;
@@ -1147,16 +1148,18 @@ bool PGMonitor::map_pg_creates()
 	       << " acting: " << s->acting << " -> " << acting
 	       << dendl;
 
+      pg_stat_t *ns = &pending_inc.pg_stat_updates[pgid];
+      *ns = *s;
+
       // note epoch if the target of the create message changed
-      if (acting_primary != s->acting_primary)
-	s->mapping_epoch = osdmap->get_epoch();
+      if (acting_primary != ns->acting_primary)
+	ns->mapping_epoch = osdmap->get_epoch();
 
-      s->up = up;
-      s->up_primary = up_primary;
-      s->acting = acting;
-      s->acting_primary = acting_primary;
+      ns->up = up;
+      ns->up_primary = up_primary;
+      ns->acting = acting;
+      ns->acting_primary = acting_primary;
 
-      pending_inc.pg_stat_updates[pgid] = *s;
       ++changed;
     }
   }
